@@ -39,6 +39,7 @@ ProjeKlasoru/
 **Sonuç**: İşlem bittiğinde ses dosyalarınızı outputs klasöründe bulabilirsiniz.
 
 Not: Bu araç ses üretmek için İnternet Bağlantısı gerektirir.
+
 Not2: Dil ekleyip çıkartmak için languages.json dosyasını Not Defteri ile açın ve yapıyı bozmadan değişikliklerinizi yapın.
 
 ## ⚠️ Sorun Giderme
