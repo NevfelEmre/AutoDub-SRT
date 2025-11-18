@@ -12,25 +12,6 @@ Python veya karmaşık kütüphaneler kurmanıza gerek yoktur. **Tamamen taşın
 * **Kolay Yapılandırma:** Kod bilgisi gerektirmez. Tüm ayarlar `languages.json` dosyasından yönetilir.
 * **Taşınabilir:** USB bellekte veya herhangi bir diskte çalışabilir. Kurulum gerektirmez.
 
-## 📂 Klasör Yapısı
-
-Programın çalışması için klasör yapınızın **tam olarak** aşağıdaki gibi görünmesi gerekir:
-
-ProjeKlasoru/
-│
-├── DublajAraci.exe       # Ana program (Çift tıklamanız yeterli)
-├── languages.json        # Ayar dosyası
-│
-├── input_subtitles/      # BURAYA KOPYALAYIN: .srt dosyalarınız
-│   ├── tr.srt
-│   ├── en.srt
-│   └── ...
-│
-├── Library/              # GEREKLİ: Ses işleme motoru
-│   └── ffmpeg.exe        # (ve yanındaki .dll dosyaları)
-│
-└── outputs/              # SONUÇ: Oluşan dublaj dosyaları buraya gelir
-
 ## 🚀 Nasıl Kullanılır?
 1. Altyazıları Hazırlayın: .srt formatındaki altyazı dosyalarınızı input_subtitles klasörüne kopyalayın.
 
