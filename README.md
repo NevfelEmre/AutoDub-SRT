@@ -13,9 +13,9 @@ Python veya karmaşık kütüphaneler kurmanıza gerek yoktur. **Tamamen taşın
 * **Taşınabilir:** USB bellekte veya herhangi bir diskte çalışabilir. Kurulum gerektirmez.
 
 ## 🚀 Nasıl Kullanılır?
-1. Altyazıları Hazırlayın: .srt formatındaki altyazı dosyalarınızı input_subtitles klasörüne kopyalayın.
+**1. Altyazıları Hazırlayın:** .srt formatındaki altyazı dosyalarınızı input_subtitles klasörüne kopyalayın.
 
-2. Çalıştırın: DublajAraci.exe dosyasına çift tıklayın.
+**2. Çalıştırın:** DublajAraci.exe dosyasına çift tıklayın.
 
 **Sonuç**: İşlem bittiğinde ses dosyalarınızı outputs klasöründe bulabilirsiniz.
 
