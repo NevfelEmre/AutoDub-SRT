@@ -6,13 +6,13 @@ import subprocess
 import asyncio 
 import edge_tts 
 import shutil
-import json # YENI: JSON okumak icin
+import json
 
 # --- UYARILARI GİZLEME ---
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-# --- PORTABLE AYARLAR (EXE VE SCRIPT UYUMLU) ---
+# --- PORTABLE AYARLAR ---
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
@@ -32,7 +32,7 @@ from pathlib import Path
 OUTPUT_KLASORU = os.path.join(BASE_DIR, "outputs")
 INPUT_KLASORU = os.path.join(BASE_DIR, "input_subtitles")
 TEMP_KLASOR = os.path.join(BASE_DIR, "temp_audio")
-CONFIG_DOSYASI = os.path.join(BASE_DIR, "languages.json") # Ayar dosyasi
+CONFIG_DOSYASI = os.path.join(BASE_DIR, "languages.json")
 
 # --- YARDIMCI FONKSIYONLAR ---
 def time_to_millis(time_obj: datetime.time) -> int:
@@ -43,7 +43,7 @@ def time_to_millis(time_obj: datetime.time) -> int:
 
 def speed_up_audio(input_path: str, output_path: str, speed_ratio: float):
     if not os.path.exists(FFMPEG_EXE):
-        os.rename(input_path, output_path)
+        shutil.copy2(input_path, output_path) 
         return
 
     speed_ratio = max(1.0, speed_ratio) 
@@ -59,7 +59,8 @@ def speed_up_audio(input_path: str, output_path: str, speed_ratio: float):
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
         print(f"     !!! Hızlandırma Hatası: {e}")
-        if input_path != output_path: os.replace(input_path, output_path)
+        if input_path != output_path: 
+            shutil.copy2(input_path, output_path)
 
 # --- ANA ASENKRON FONKSIYON ---
 async def main():
@@ -67,19 +68,16 @@ async def main():
     Path(INPUT_KLASORU).mkdir(exist_ok=True)
     Path(TEMP_KLASOR).mkdir(exist_ok=True)
 
-    print(">>> Dublaj Otomasyonu (Config Dosyali Versiyon)")
+    print(">>> Dublaj Otomasyonu (Final Versiyon)")
     
-    # --- ADIM 1: JSON DOSYASINI OKU ---
     if not os.path.exists(CONFIG_DOSYASI):
         print(f"!!! HATA: Ayar dosyasi bulunamadi: {CONFIG_DOSYASI}")
-        print("Lutfen 'languages.json' dosyasini olusturun.")
         input("Kapatmak icin Enter'a basin...")
         return
 
     try:
         with open(CONFIG_DOSYASI, 'r', encoding='utf-8') as f:
             IS_LISTESI = json.load(f)
-        print(f">>> '{CONFIG_DOSYASI}' basariyla okundu.")
     except Exception as e:
         print(f"!!! HATA: JSON dosyasi bozuk: {e}")
         input("Kapatmak icin Enter'a basin...")
@@ -87,16 +85,13 @@ async def main():
 
     print(f">>> Toplam {len(IS_LISTESI)} adet dil islenecek...")
 
-    # --- ADIM 2: DONGU ---
     for i, is_tanimi in enumerate(IS_LISTESI):
-        # JSON'dan verileri al
         altyazi_dosyasi_adi = is_tanimi.get('altyazi')
         dil_kodu = is_tanimi.get('dil')
         secilen_ses = is_tanimi.get('ses')
         cikti_adi = is_tanimi.get('cikti')
 
         if not all([altyazi_dosyasi_adi, dil_kodu, secilen_ses, cikti_adi]):
-            print(f"!!! UYARI: {i+1}. siradaki islemde eksik bilgi var. Atlaniyor.")
             continue
 
         altyazi_tam_yolu = os.path.join(INPUT_KLASORU, altyazi_dosyasi_adi)
@@ -107,7 +102,7 @@ async def main():
         try:
             subs = list(parser.parse(altyazi_tam_yolu, encoding='utf-8-sig'))
         except Exception as e:
-            print(f"!!! HATA: Altyazi okunamadi ({altyazi_tam_yolu}): {e}")
+            print(f"!!! HATA: Altyazi okunamadi: {e}")
             continue
 
         try:
@@ -125,8 +120,8 @@ async def main():
             altyazi_suresi_ms = bitis_ms - baslama_ms
             metin = sub.text
             
-            if sub_index % 10 == 0:
-                print(f"  {sub_index+1}/{len(subs)}...")
+            # --- HER SATIRI YAZDIR ---
+            print(f"  {sub_index+1}/{len(subs)}: [{sub.start.strftime('%H:%M:%S')}]")
             
             temp_wav_path_raw = os.path.join(TEMP_KLASOR, f"temp_{dil_kodu}_{sub_index}_raw.mp3") 
             temp_wav_path_final = os.path.join(TEMP_KLASOR, f"temp_{dil_kodu}_{sub_index}_final.wav")
@@ -135,22 +130,31 @@ async def main():
                 communicate = edge_tts.Communicate(metin, secilen_ses)
                 await communicate.save(temp_wav_path_raw)
                 
-                uretilen_ses = AudioSegment.from_file(temp_wav_path_raw)
-                uretilen_sure_ms = len(uretilen_ses)
+                if not os.path.exists(temp_wav_path_raw) or os.path.getsize(temp_wav_path_raw) == 0:
+                     print(f"!!! HATA: Ses dosyasi olusturulamadi (Satir {sub_index+1})")
+                     continue
+
+                # MP3'ü otomatik tanı
+                temp_ses_obj = AudioSegment.from_file(temp_wav_path_raw)
+                uretilen_sure_ms = len(temp_ses_obj)
 
                 if uretilen_sure_ms > altyazi_suresi_ms and altyazi_suresi_ms > 0:
                     hiz_orani = uretilen_sure_ms / altyazi_suresi_ms
                     if hiz_orani > 1.05: 
+                        # Hizlandirirken MP3 -> WAV donusumu otomatik olur
+                        print(f"     -> Hızlandırılıyor: {hiz_orani:.2f}x")
                         speed_up_audio(temp_wav_path_raw, temp_wav_path_final, hiz_orani)
                         uretilen_ses = AudioSegment.from_wav(temp_wav_path_final)
                     else:
-                         os.replace(temp_wav_path_raw, temp_wav_path_final)
-                         uretilen_ses = AudioSegment.from_wav(temp_wav_path_final)
+                         uretilen_ses = AudioSegment.from_file(temp_wav_path_raw)
+                else:
+                     # Hizlandirma yoksa direkt MP3'ü kullan
+                     uretilen_ses = AudioSegment.from_file(temp_wav_path_raw)
 
                 final_dublaj = final_dublaj.overlay(uretilen_ses, position=baslama_ms)
                 
             except Exception as e:
-                print(f"!!! Satir hatasi: {e}")
+                print(f"!!! Satir hatasi ({sub_index+1}): {e}")
                 continue
 
         print(f">>> {dil_kodu.upper()} tamamlandi. Kaydediliyor...")
