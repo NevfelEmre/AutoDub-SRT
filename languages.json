@@ -1,0 +1,74 @@
+[
+    {
+        "altyazi": "ar.srt",
+        "dil": "ar",
+        "ses": "ar-SA-HamedNeural",
+        "cikti": "ar_dub.wav"
+    },
+    {
+        "altyazi": "zh-cn.srt",
+        "dil": "zh-cn",
+        "ses": "zh-CN-YunxiNeural",
+        "cikti": "zh-cn_dub.wav"
+    },
+    {
+        "altyazi": "fr.srt",
+        "dil": "fr",
+        "ses": "fr-FR-HenriNeural",
+        "cikti": "fr_dub.wav"
+    },
+    {
+        "altyazi": "de.srt",
+        "dil": "de",
+        "ses": "de-DE-KillianNeural",
+        "cikti": "de_dub.wav"
+    },
+    {
+        "altyazi": "hi.srt",
+        "dil": "hi",
+        "ses": "hi-IN-MadhurNeural",
+        "cikti": "hi_dub.wav"
+    },
+    {
+        "altyazi": "it.srt",
+        "dil": "it",
+        "ses": "it-IT-DiegoNeural",
+        "cikti": "it_dub.wav"
+    },
+    {
+        "altyazi": "ja.srt",
+        "dil": "ja",
+        "ses": "ja-JP-KeitaNeural",
+        "cikti": "ja_dub.wav"
+    },
+    {
+        "altyazi": "ko.srt",
+        "dil": "ko",
+        "ses": "ko-KR-InJoonNeural",
+        "cikti": "ko_dub.wav"
+    },
+    {
+        "altyazi": "pt.srt",
+        "dil": "pt",
+        "ses": "pt-BR-AntonioNeural",
+        "cikti": "pt_dub.wav"
+    },
+    {
+        "altyazi": "ru.srt",
+        "dil": "ru",
+        "ses": "ru-RU-DmitryNeural",
+        "cikti": "ru_dub.wav"
+    },
+    {
+        "altyazi": "es.srt",
+        "dil": "es",
+        "ses": "es-MX-JorgeNeural",
+        "cikti": "es_dub.wav"
+    },
+    {
+        "altyazi": "tr.srt",
+        "dil": "tr",
+        "ses": "tr-TR-AhmetNeural",
+        "cikti": "tr_dub.wav"
+    }
+]
