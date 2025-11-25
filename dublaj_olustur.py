@@ -28,11 +28,19 @@ from pysubparser import parser
 from pydub import AudioSegment
 from pathlib import Path
 
-# --- AYARLAR ---
+# --- KLASÖR AYARLARI ---
 OUTPUT_KLASORU = os.path.join(BASE_DIR, "outputs")
 INPUT_KLASORU = os.path.join(BASE_DIR, "input_subtitles")
 TEMP_KLASOR = os.path.join(BASE_DIR, "temp_audio")
 CONFIG_DOSYASI = os.path.join(BASE_DIR, "languages.json")
+SETTINGS_DOSYASI = os.path.join(BASE_DIR, "settings.json")
+
+# --- VARSAYILAN AYARLAR ---
+DEFAULT_SETTINGS = {
+    "genel_hiz": "+20%",
+    "sinirsiz_bosluk_kullanimi": True,
+    "max_ek_sure_ms": 2500
+}
 
 # --- YARDIMCI FONKSIYONLAR ---
 def time_to_millis(time_obj: datetime.time) -> int:
@@ -41,7 +49,7 @@ def time_to_millis(time_obj: datetime.time) -> int:
            (time_obj.second * 1000) + \
            (time_obj.microsecond // 1000)
 
-def speed_up_audio(input_path: str, output_path: str, speed_ratio: float):
+def speed_up_audio(input_path, output_path, speed_ratio: float):
     if not os.path.exists(FFMPEG_EXE):
         shutil.copy2(input_path, output_path) 
         return
@@ -62,16 +70,43 @@ def speed_up_audio(input_path: str, output_path: str, speed_ratio: float):
         if input_path != output_path: 
             shutil.copy2(input_path, output_path)
 
+# --- AYARLARI YUKLEME ---
+def load_settings():
+    if not os.path.exists(SETTINGS_DOSYASI):
+        try:
+            with open(SETTINGS_DOSYASI, 'w', encoding='utf-8') as f:
+                json.dump(DEFAULT_SETTINGS, f, indent=4)
+            return DEFAULT_SETTINGS
+        except:
+            return DEFAULT_SETTINGS
+    
+    try:
+        with open(SETTINGS_DOSYASI, 'r', encoding='utf-8') as f:
+            user_settings = json.load(f)
+            final_settings = {**DEFAULT_SETTINGS, **user_settings}
+            return final_settings
+    except Exception as e:
+        print(f"!!! Ayar dosyasi bozuk ({e}). Varsayilanlar kullaniliyor.")
+        return DEFAULT_SETTINGS
+
 # --- ANA ASENKRON FONKSIYON ---
 async def main():
     Path(OUTPUT_KLASORU).mkdir(exist_ok=True)
     Path(INPUT_KLASORU).mkdir(exist_ok=True)
     Path(TEMP_KLASOR).mkdir(exist_ok=True)
 
-    print(">>> Dublaj Otomasyonu (Final Versiyon)")
+    print(f">>> Dublaj Otomasyonu")
+    
+    # --- AYARLARI OKU ---
+    settings = load_settings()
+    GENEL_HIZ = settings.get("genel_hiz", "+20%")
+    SINIRSIZ_BOSLUK = settings.get("sinirsiz_bosluk_kullanimi", True)
+    MAX_EK_SURE = settings.get("max_ek_sure_ms", 2500)
+    
+    print(f">>> Ayarlar Yuklendi -> Hiz: {GENEL_HIZ} | Esnek Zaman: {SINIRSIZ_BOSLUK} | Max Ek: {MAX_EK_SURE}ms")
     
     if not os.path.exists(CONFIG_DOSYASI):
-        print(f"!!! HATA: Ayar dosyasi bulunamadi: {CONFIG_DOSYASI}")
+        print(f"!!! HATA: Dil dosyasi bulunamadi: {CONFIG_DOSYASI}")
         input("Kapatmak icin Enter'a basin...")
         return
 
@@ -106,55 +141,75 @@ async def main():
             continue
 
         try:
-            toplam_sure_ms = time_to_millis(subs[-1].end)
+            final_end_time = time_to_millis(subs[-1].end)
         except IndexError:
             print("!!! HATA: Altyazi dosyasi bos.")
             continue
             
-        final_dublaj = AudioSegment.silent(duration=toplam_sure_ms)
+        # Videonun sonuna sadece MAX_EK_SURE kadar milisaniye pay birak
+        final_dublaj = AudioSegment.silent(duration=final_end_time + MAX_EK_SURE) 
+        
         print(f">>> {len(subs)} satir isleniyor...")
 
         for sub_index, sub in enumerate(subs):
             baslama_ms = time_to_millis(sub.start)
-            bitis_ms = time_to_millis(sub.end)
-            altyazi_suresi_ms = bitis_ms - baslama_ms
+            kendi_bitis_ms = time_to_millis(sub.end)
+            
+            # --- AKILLI SURE HESABI ---
+            if sub_index + 1 < len(subs):
+                # -- ARADAKİ SATIRLAR --
+                sonraki_baslama_ms = time_to_millis(subs[sub_index+1].start)
+                
+                if SINIRSIZ_BOSLUK:
+                    # Sonraki cümleye kadar her yeri kullan
+                    max_kullanilabilir_bitis = max(kendi_bitis_ms, sonraki_baslama_ms - 100)
+                else:
+                    # Limitli uzat
+                    limitli_bitis = kendi_bitis_ms + MAX_EK_SURE
+                    max_kullanilabilir_bitis = min(sonraki_baslama_ms - 100, limitli_bitis)
+            else:
+                # -- SON SATIR (BURASI DÜZELDİ) --
+                # Son satırda asla sınırsız boşluk kullanma.
+                # Video bittiği için MAX_EK_SURE kuralına sadık kal.
+                # Böylece sığmazsa hızlandırmak zorunda kalır.
+                max_kullanilabilir_bitis = kendi_bitis_ms + MAX_EK_SURE
+            
+            hedef_sure_ms = max_kullanilabilir_bitis - baslama_ms
             metin = sub.text
             
-            # --- HER SATIRI YAZDIR ---
-            print(f"  {sub_index+1}/{len(subs)}: [{sub.start.strftime('%H:%M:%S')}]")
+            print(f"  {sub_index+1}/{len(subs)}: [{sub.start.strftime('%H:%M:%S')}]", end="")
             
             temp_wav_path_raw = os.path.join(TEMP_KLASOR, f"temp_{dil_kodu}_{sub_index}_raw.mp3") 
             temp_wav_path_final = os.path.join(TEMP_KLASOR, f"temp_{dil_kodu}_{sub_index}_final.wav")
 
             try:
-                communicate = edge_tts.Communicate(metin, secilen_ses)
+                communicate = edge_tts.Communicate(metin, secilen_ses, rate=GENEL_HIZ)
                 await communicate.save(temp_wav_path_raw)
                 
                 if not os.path.exists(temp_wav_path_raw) or os.path.getsize(temp_wav_path_raw) == 0:
-                     print(f"!!! HATA: Ses dosyasi olusturulamadi (Satir {sub_index+1})")
+                     print(" -> HATA: Dosya olusmadi")
                      continue
 
-                # MP3'ü otomatik tanı
                 temp_ses_obj = AudioSegment.from_file(temp_wav_path_raw)
                 uretilen_sure_ms = len(temp_ses_obj)
 
-                if uretilen_sure_ms > altyazi_suresi_ms and altyazi_suresi_ms > 0:
-                    hiz_orani = uretilen_sure_ms / altyazi_suresi_ms
+                if uretilen_sure_ms > hedef_sure_ms:
+                    hiz_orani = uretilen_sure_ms / hedef_sure_ms
                     if hiz_orani > 1.05: 
-                        # Hizlandirirken MP3 -> WAV donusumu otomatik olur
-                        print(f"     -> Hızlandırılıyor: {hiz_orani:.2f}x")
+                        print(f" -> Hizlandiriliyor: {hiz_orani:.2f}x")
                         speed_up_audio(temp_wav_path_raw, temp_wav_path_final, hiz_orani)
                         uretilen_ses = AudioSegment.from_wav(temp_wav_path_final)
                     else:
+                         print("")
                          uretilen_ses = AudioSegment.from_file(temp_wav_path_raw)
                 else:
-                     # Hizlandirma yoksa direkt MP3'ü kullan
+                     print("")
                      uretilen_ses = AudioSegment.from_file(temp_wav_path_raw)
 
                 final_dublaj = final_dublaj.overlay(uretilen_ses, position=baslama_ms)
                 
             except Exception as e:
-                print(f"!!! Satir hatasi ({sub_index+1}): {e}")
+                print(f"\n!!! Satir hatasi ({sub_index+1}): {e}")
                 continue
 
         print(f">>> {dil_kodu.upper()} tamamlandi. Kaydediliyor...")
