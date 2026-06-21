@@ -2,7 +2,7 @@
     {
         "altyazi": "ar.srt",
         "dil": "ar",
-        "ses": "ar-SA-HamedNeural",
+        "ses": "ar-EG-ShakirNeural",
         "cikti": "ar_dub.wav"
     },
     {
@@ -20,7 +20,7 @@
     {
         "altyazi": "de.srt",
         "dil": "de",
-        "ses": "de-DE-KillianNeural",
+        "ses": "de-DE-ConradNeural",
         "cikti": "de_dub.wav"
     },
     {
@@ -62,7 +62,7 @@
     {
         "altyazi": "es.srt",
         "dil": "es",
-        "ses": "es-MX-JorgeNeural",
+        "ses": "es-US-AlonsoNeural",
         "cikti": "es_dub.wav"
     },
     {
@@ -70,5 +70,11 @@
         "dil": "tr",
         "ses": "tr-TR-AhmetNeural",
         "cikti": "tr_dub.wav"
+    },
+    {
+        "altyazi": "uk.srt",
+        "dil": "uk",
+        "ses": "uk-UA-OstapNeural",
+        "cikti": "uk_dub.wav"
     }
 ]
